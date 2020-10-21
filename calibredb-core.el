@@ -634,7 +634,7 @@ Argument BOOK-ALIST ."
                         (icons-in-terminal-icon-for-file (calibredb-getattr (list book-alist) :file-path) :v-adjust 0 :height 1) "")
                     " "))
            (t ""))
-     (calibredb-format-column (format "%s" (propertize id 'face 'calibredb-id-face)) calibredb-id-width :left)
+     (if calibredb-detial-view (calibredb-format-column (format "%s" (propertize id 'face 'calibredb-id-face)) calibredb-id-width :left) "")
      (calibredb-format-column (format "%s%s"
                                       (if (s-contains? calibredb-favorite-keyword tag)
                                           (format "%s " (propertize calibredb-favorite-icon
@@ -669,19 +669,20 @@ Argument BOOK-ALIST ."
                                           'help-echo "Filter with this tag"
                                           'keymap tag-map) (calibredb-tag-width) :left)
      (calibredb-format-column (propertize ids 'face 'calibredb-ids-face) (calibredb-ids-width) :left)
-     (if (stringp comment)
-         (propertize
-          (let ((c (if calibredb-condense-comments (calibredb-condense-comments comment) comment))
-                (w calibredb-comment-width))
-            (cond ((> w 0) (s-truncate w c))
-                  ((= w 0) "")
-                  (t c)))
-          'face 'calibredb-comment-face) "")
+     (if calibredb-detial-view
+         (if (stringp comment)
+             (propertize
+              (let ((c (if calibredb-condense-comments (calibredb-condense-comments comment) comment))
+                    (w calibredb-comment-width))
+                (cond ((> w 0) (s-truncate w c))
+                      ((= w 0) "")
+                      (t c)))
+              'face 'calibredb-comment-face) "") "")
      (format "%s%s"
              (if calibredb-size-show
                  (propertize size 'face 'calibredb-size-face) "")
              (if calibredb-size-show
-                 (propertize "Mb" 'face 'calibredb-size-face) ""))) ))
+                 (propertize "Mb" 'face 'calibredb-size-face) "")))))
 
 (provide 'calibredb-core)
 

@@ -98,6 +98,11 @@ nil: Prompt delete or not."
   :type 'boolean
   :group 'calibredb)
 
+(defcustom calibredb-preferred-format "epub"
+  "Set to your preferred book format for sorting"
+  :type 'string
+  :group 'calibredb)
+
 (defcustom calibredb-library-alist `((,calibredb-root-dir))
   "Alist for all your calibre libraries."
   :type 'alist
@@ -484,6 +489,7 @@ Argument QUERY-RESULT is the query result generate by sqlite."
           (:book-dir               ,(nth 2 spl-query-result))
           (:book-name              ,(nth 3 spl-query-result))
           (:book-format  ,(downcase (nth 4 spl-query-result)))
+          (:pref-format  ,(if (cl-equalp (nth 4 spl-query-result) calibredb-preferred-format) 1 0))
           (:book-pubdate           ,(nth 5 spl-query-result))
           (:book-title             ,(nth 6 spl-query-result))
           (:file-path    ,(concat (file-name-as-directory calibredb-root-dir)
@@ -586,6 +592,38 @@ Argument CALIBRE-ITEM-LIST is the calibred item list."
       (setq display-alist
             (cons (list (calibredb-format-item item) item) display-alist)))))
 
+(defun calibredb-sort-attr ()
+  (pcase calibredb-sort-by
+    ('id
+     :id)
+    ('title
+     :book-title)
+    ('author
+     :author-sort)
+    ('format
+     :book-format)
+    ('date
+     :last_modified)
+    ('pubdate
+     :book-bookpubdate)
+    ('tag
+     :tag)
+    ('size
+     :size)
+    ('language
+     :lang_code)
+    (t
+     :id)))
+
+(defun calibredb-sort-preferred-format (alist)
+  "Sort book list by preferred format."
+  (setq alist (cl-sort alist (if (eq calibredb-order 'desc) '< '>)
+                       :key (lambda (x)
+                              (calibredb-getattr (list x) :pref-format))))
+  (setq alist (cl-stable-sort alist (if (eq calibredb-order 'desc) '< '>)
+                              :key (lambda (x)
+                                     (string-to-number (calibredb-getattr (list x) (calibredb-sort-attr)))))))
+
 (defun calibredb-candidates()
   "Generate ebooks candidates alist."
   (let* ((query-result (calibredb-query (cond ((eq calibredb-order 'desc)
@@ -650,6 +688,10 @@ Argument CALIBRE-ITEM-LIST is the calibred item list."
                         (setq res-list (remove item res-list))
                         (setq h-list (cons item h-list)))))
                ;; merge archive/highlight/favorite/rest items
+               (setq a-list (calibredb-sort-preferred-format a-list))
+               (setq f-list (calibredb-sort-preferred-format f-list))
+               (setq h-list (calibredb-sort-preferred-format h-list))
+               (setq res-list (calibredb-sort-preferred-format res-list))
                (setq res-list (nconc a-list res-list h-list f-list))
                (calibredb-getbooklist res-list))))))
 

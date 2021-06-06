@@ -31,6 +31,7 @@
 (require 'sendmail)
 (require 'dired)
 (require 'thingatpt)
+(require 'pcase)
 (ignore-errors
   (require 'helm)
   (require 'ivy)
@@ -40,6 +41,8 @@
 (eval-when-compile (defvar calibredb-detial-view))
 (eval-when-compile (defvar calibredb-full-entries))
 (declare-function calibredb-condense-comments "calibredb-search.el")
+(declare-function calibredb-attach-icon-for "calibredb-utils.el")
+
 
 (defgroup calibredb nil
   "calibredb group"
@@ -98,8 +101,8 @@ nil: Prompt delete or not."
   :type 'boolean
   :group 'calibredb)
 
-(defcustom calibredb-preferred-format "epub"
-  "Set to your preferred book format for sorting"
+(defcustom calibredb-preferred-format nil
+  "Set to your preferred book format."
   :type 'string
   :group 'calibredb)
 
@@ -244,6 +247,11 @@ Set negative to keep original length."
   :group 'calibredb
   :type 'boolean)
 
+(defcustom calibredb-format-character-icons nil
+  "Set Non-nil to show file format icons with built-in character icons."
+  :group 'calibredb
+  :type 'boolean)
+
 (defcustom calibredb-favorite-keyword "favorite"
   "The favorite tag."
   :group 'calibredb
@@ -360,7 +368,7 @@ WITH d AS (
     SELECT *
     FROM books
 )
-SELECT d.book AS id, b.author_sort, b.path, d.name, d.format, b.pubdate, b.title, t.tag, d.uncompressed_size, c.text, group_concat(i.type || ':' || i.val) AS ids, p.name AS publisher, s.name AS series, l.lang_code, b.last_modified
+SELECT d.book AS id, b.author_sort, b.path, d.name, group_concat(DISTINCT d.format) as format, b.pubdate, b.title, t.tag, d.uncompressed_size, c.text, group_concat(i.type || ':' || i.val) AS ids, p.name AS publisher, s.name AS series, l.lang_code, b.last_modified
 FROM d
 LEFT JOIN p
 ON d.book = p.book
@@ -376,7 +384,7 @@ LEFT JOIN b
 ON d.book = b.id
 LEFT JOIN identifiers AS i
 ON d.book = i.book
-GROUP BY d.book, d.format"
+GROUP BY d.book"
   "TODO calibre database query statement.")
 
 (defun calibredb-query-search-string (filter)
@@ -771,12 +779,14 @@ Argument BOOK-ALIST ."
        "%s%s%s %s %s %s (%s) %s %s %s")
      (cond (calibredb-format-all-the-icons
             (concat (if (fboundp 'all-the-icons-icon-for-file)
-                        (all-the-icons-icon-for-file (calibredb-getattr (list book-alist) :file-path)) "")
+                        (all-the-icons-icon-for-file (calibredb-car-filepath (calibredb-getattr (list book-alist) :file-path) )) "")
                     " "))
            (calibredb-format-icons-in-terminal
             (concat (if (fboundp 'icons-in-terminal-icon-for-file)
-                        (icons-in-terminal-icon-for-file (calibredb-getattr (list book-alist) :file-path) :v-adjust 0 :height 1) "")
+                        (icons-in-terminal-icon-for-file (calibredb-car-filepath (calibredb-getattr (list book-alist) :file-path) ) :v-adjust 0 :height 1) "")
                     " "))
+           (calibredb-format-character-icons
+            (concat (calibredb-attach-icon-for (calibredb-car-filepath (calibredb-getattr (list book-alist) :file-path) )) " "))
            (t ""))
      (calibredb-format-column (format "%s" (propertize id 'face 'calibredb-id-face 'id id)) calibredb-id-width :left)
      (calibredb-format-column (format "%s%s"
